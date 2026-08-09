@@ -1,0 +1,44 @@
+name: 'Soroban Changelog Bot'
+description: 'Diffs a Soroban contract WASM interface and storage schema between two deployments and generates a categorized GitHub Release changelog.'
+author: 'soroban-changelog-bot'
+branding:
+  icon: 'file-text'
+  color: 'purple'
+
+inputs:
+  rpc-url:
+    description: 'Stellar RPC endpoint used to fetch deployed contract WASM (e.g. https://soroban-testnet.stellar.org).'
+    required: true
+  contract-name:
+    description: 'Human-readable contract name, used in the release title and LLM prompt.'
+    required: true
+  previous-contract-id:
+    description: 'Contract address (C...) of the previously deployed version.'
+    required: true
+  new-contract-id:
+    description: 'Contract address (C...) of the newly deployed version.'
+    required: true
+  previous-tag:
+    description: 'Git tag or version label corresponding to the previous deployment.'
+    required: true
+  new-tag:
+    description: 'Git tag or version label for the new deployment. Defaults to the tag that triggered the workflow.'
+    required: false
+  github-token:
+    description: 'Token used to create/update the GitHub Release. Usually secrets.GITHUB_TOKEN.'
+    required: true
+  anthropic-api-key:
+    description: 'Anthropic API key for LLM-generated changelog prose. If omitted, a deterministic template-based changelog is generated instead (no external calls).'
+    required: false
+
+outputs:
+  release-url:
+    description: 'URL of the created or updated GitHub Release.'
+  change-count:
+    description: 'Number of interface-level changes detected.'
+  diff-json:
+    description: 'Raw structured diff as a JSON string, for downstream steps.'
+
+runs:
+  using: 'node20'
+  main: 'dist/index.js'
