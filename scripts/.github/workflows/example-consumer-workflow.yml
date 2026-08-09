@@ -1,0 +1,48 @@
+name: Soroban Changelog
+
+# Triggers on any semver-ish tag push. If you deploy via a separate
+# `deploy.yml` workflow instead, swap this for:
+#   on:
+#     workflow_run:
+#       workflows: ["Deploy Contract"]
+#       types: [completed]
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  changelog:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # needed to create/update the Release
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # need full tag history to resolve the previous tag
+
+      - name: Resolve previous tag
+        id: prev
+        run: |
+          PREV_TAG=$(git describe --tags --abbrev=0 "${GITHUB_REF_NAME}^" 2>/dev/null || echo "")
+          if [ -z "$PREV_TAG" ]; then
+            echo "::error::No previous tag found - nothing to diff against for the first release."
+            exit 1
+          fi
+          echo "tag=$PREV_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Generate Soroban changelog + release
+        uses: your-org/soroban-changelog-bot@v1
+        with:
+          rpc-url: https://soroban-testnet.stellar.org
+          contract-name: 'SampleToken'
+          # Map each git tag to the contract address it was deployed at.
+          # Keeping this mapping in repo vars/secrets (or a committed
+          # deployments.json you `jq` into $GITHUB_OUTPUT above) means you
+          # never have to touch this workflow file when you deploy again.
+          previous-contract-id: ${{ vars[format('CONTRACT_ID_{0}', steps.prev.outputs.tag)] }}
+          new-contract-id: ${{ vars[format('CONTRACT_ID_{0}', github.ref_name)] }}
+          previous-tag: ${{ steps.prev.outputs.tag }}
+          new-tag: ${{ github.ref_name }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }} # optional - omit to use the deterministic renderer
